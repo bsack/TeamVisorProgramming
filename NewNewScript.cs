@@ -69,7 +69,8 @@ public class NewNewScript : MonoBehaviour
 
     [SerializeField]
 
-    public int instruction_number = 1;
+    public int instruction_number = 0;
+    public int curr_instr_num = 0;
     int i = 0; //instruction step counter
 
     Stopwatch stopWatch = new Stopwatch();  // This will track elapsed time for updates
@@ -85,9 +86,9 @@ public class NewNewScript : MonoBehaviour
     SwitchData switchdata = new SwitchData();
     DisplayedTelemetryFields displayedtelemetryfields = new DisplayedTelemetryFields();
 
-    
 
-    
+
+
 
     //float elapsedSecs = 0.0f;           // Overall counter (currently not used)
     static float refreshSecs = 1.0f;    // How often to refresh (GET) the data from the telemetry server (seconds) - used later to do a refresh in the beginning, must be static cuz its initial
@@ -99,14 +100,13 @@ public class NewNewScript : MonoBehaviour
 
     DisplayRandomInstructions display = new DisplayRandomInstructions();
 
-    //instantiate all the pictures we will use
+    // 
+    public ArrayList previousInstructions = new ArrayList();
+
     public Image myImageComponent;
     public Image myBoxedImageComponent;
     public Sprite[] sprite_array;
     public Sprite[] boxed_images;
-    //Dictionary<string, Sprite> sprite_dict = new Dictionary<string, Sprite>();
-    
-
 
 
     // Use this for initialization
@@ -147,8 +147,8 @@ public class NewNewScript : MonoBehaviour
         }
 
 
-            
-       
+
+
 
         //Setting all of the boolean metric variables to be true to display everything
         displayedtelemetryfields.press = true;
@@ -185,7 +185,7 @@ public class NewNewScript : MonoBehaviour
         string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}", ts_elap.Hours, ts_elap.Minutes, ts_elap.Seconds); //make a string variable called elapsedTime. Says # of variable:format, so the first thing (0) is hours formatted as 00, : (this is the colon we see in the time), the second (1) is minutes formatted 00 and so on. This allows you to avoid doing math and just put in the time you want conveniently
                                                                                                                      // t_eva.text = "Time Elapsed: " + elapsedTime; // give this to t_eva text object so we can put it on the screen
 
-       
+
 
         // Track overall elapsed time
         //elapsedSecs += Time.deltaTime;
@@ -216,42 +216,76 @@ public class NewNewScript : MonoBehaviour
             //List<string> metrics = new List<string>(); //defining a new class type list and calling it metrics, it will be a list of strings
 
         }
-
-        /*
-        if (Input.GetKeyDown(KeyCode.RightArrow))  //replace with voice command if
-        {
-            i++;
-            if (i > 19) { i = 19; }
-            instructions.text = instructions_set[i];
-
-        }
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) //replace with voice command if
-        {
-            i--;
-            if (i < 0) { i = 0; }
-            instructions.text = instructions_set[i];
-        } */
     }
 
+    // "Next" Command Functionality
     public void NextStep()
     {
-        
-        InstructionAndPicture instructionChosen = new InstructionAndPicture();
-        instructionChosen = display.nextInstruction(instruction_number);
+        if (curr_instr_num == instruction_number)
+        {
 
-        //Set Instruction
-        GameObject child = GameObject.Find("Instructions");
-        Text instructions = child.GetComponent<Text>();
-        instructions.text = instructionChosen.instruction;
+            InstructionAndPicture instructionChosen = new InstructionAndPicture();
+            instructionChosen = display.nextInstruction(instruction_number);
+            previousInstructions.Add(instructionChosen);
 
-        //Set Picture
-        myImageComponent.sprite = sprite_array[instructionChosen.pic_index];
-        myBoxedImageComponent.sprite = boxed_images[instructionChosen.boxpic_index];
-        instruction_number = instruction_number + 1;
+            //Set Instruction
+            GameObject child = GameObject.Find("Instructions");
+            Text instructions = child.GetComponent<Text>();
+            instructions.text = instructionChosen.instruction;
+
+            //Set Picture
+            myImageComponent.sprite = sprite_array[instructionChosen.pic_index];
+            myBoxedImageComponent.sprite = boxed_images[instructionChosen.boxpic_index];
+
+            instruction_number++;
+            curr_instr_num++;
+
+        }
+        else if (curr_instr_num > instruction_number || curr_instr_num < 0)
+        {
+            UnityEngine.Debug.Log("NextStep Problem");
+        }
+        else
+        { // curr_instr_num < instruction_number
+
+            InstructionAndPicture instructionChosen = new InstructionAndPicture();
+            instructionChosen = (InstructionAndPicture) previousInstructions[curr_instr_num];
+            UnityEngine.Debug.Log(curr_instr_num);
+
+            //Set Instruction
+            GameObject child = GameObject.Find("Instructions");
+            Text instructions = child.GetComponent<Text>();
+            instructions.text = instructionChosen.instruction;
+
+            //Set Picture
+            myImageComponent.sprite = sprite_array[instructionChosen.pic_index];
+            myBoxedImageComponent.sprite = boxed_images[instructionChosen.boxpic_index];
+
+            curr_instr_num++;
+        }
 
     }
 
-    
+    // "Back" Command Functionality
+    public void PreviousStep()
+    {
+        if (curr_instr_num > 1)
+        {
+            curr_instr_num--;
+
+            InstructionAndPicture instructionChosen = new InstructionAndPicture();
+            instructionChosen = (InstructionAndPicture)previousInstructions[curr_instr_num - 1];
+
+            //Set Instruction
+            GameObject child = GameObject.Find("Instructions");
+            Text instructions = child.GetComponent<Text>();
+            instructions.text = instructionChosen.instruction;
+
+            //Set Picture
+            myImageComponent.sprite = sprite_array[instructionChosen.pic_index];
+            myBoxedImageComponent.sprite = boxed_images[instructionChosen.boxpic_index];
+        }
+    }
 
     /*
     public TelemetryData RefreshData()
@@ -640,13 +674,20 @@ public class DisplayRandomInstructions
                 pic_index = 5
             };
             instructionChosen = closeBox;
+        } 
+        else if (instructionNum > 50)
+        {
+            InstructionAndPicture finalStep = new InstructionAndPicture
+            {
+                instruction = "EVA Task Completed. Great job!"
+            };
         }
         else
         {
             // Randomly choose from the 6 categories using math.random % categories.size()
             System.Random rnd = new System.Random();
-            categoryChosen = (string) categories[rnd.Next(categories.Count)];
-            UnityEngine.Debug.Log(categoryChosen);
+            categoryChosen = (string)categories[rnd.Next(categories.Count)];
+            //UnityEngine.Debug.Log(categoryChosen);
 
 
             if (categoryChosen != "Plug" && categoryChosen != "Knob")
@@ -657,37 +698,35 @@ public class DisplayRandomInstructions
                 {
                     instructionArrayList = value;
 
-                    instructionChosen = (InstructionAndPicture) instructionArrayList[rnd.Next(instructionArrayList.Count)];
-                    
+                    instructionChosen = (InstructionAndPicture)instructionArrayList[rnd.Next(instructionArrayList.Count)];
+
                 }
             }
-            else if(categoryChosen == "Plug")
+            else if (categoryChosen == "Plug")
             {
                 ArrayList value;
                 if (instruct_dict.TryGetValue(categoryChosen, out value))
                 {
                     instructionArrayList = value;
-                    instructionChosen = (InstructionAndPicture) instructionArrayList[0];
-                    
+                    instructionChosen = (InstructionAndPicture)instructionArrayList[0];
+
                 }
             }
-            else if(categoryChosen == "Knob")
+            else if (categoryChosen == "Knob")
             {
                 ArrayList value;
                 System.Random r = new System.Random();
-               
+
                 if (instruct_dict.TryGetValue(categoryChosen, out value))
                 {
                     instructionArrayList = value;
 
                     int temp_num = rnd.Next(instructionArrayList.Count);
                     int len = instructionArrayList.Count;
-                    instructionChosen = (InstructionAndPicture) instructionArrayList[temp_num];
-                    UnityEngine.Debug.Log(temp_num);
-                    UnityEngine.Debug.Log(len);
-                    UnityEngine.Debug.Log(instructionChosen.instruction);
+                    instructionChosen = (InstructionAndPicture)instructionArrayList[temp_num];                   
+                    //UnityEngine.Debug.Log(instructionChosen.instruction);
                     instructionChosen.instruction += r.Next(0, 100) + ".";
-                    UnityEngine.Debug.Log(instructionChosen.instruction);
+                    //UnityEngine.Debug.Log(instructionChosen.instruction);
                 }
             }
         }
@@ -740,3 +779,5 @@ public class InstructionAndPicture
         return pic_index;
     }
 }
+
+
